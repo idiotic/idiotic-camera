@@ -3,6 +3,7 @@
 """
 
 import logging
+import requests
 from idiotic import utils, item
 
 MODULE_NAME = "camera"
@@ -15,7 +16,7 @@ CREDENTIALS = None
 def configure(config, api, assets):
     global CREDENTIALS
     CREDENTIALS = config['credentials']
-    log.info(DRIVERS)
+    log.info('Drivers loaded: {}'.format(DRIVERS))
 
 def register(c, name):
     global DRIVERS
@@ -23,7 +24,6 @@ def register(c, name):
         log.warn('driver {} declared twice, {} replacing {}'.format(
             name, c, DRIVERS[name]))
     DRIVERS[name] = c
-
 
 class Camera(item.BaseItem):
     class UnknownCredentialsError(Exception): pass
@@ -46,6 +46,10 @@ class Camera(item.BaseItem):
         else:
             self.driver = DRIVERS[driver](uri, credentials)
 
+    @item.command
+    def snapshot(self):
+        self.driver.get_still()
+
 class CameraDriver:
     def __init__(self):
         pass
@@ -54,5 +58,13 @@ class FI8910EDriver(CameraDriver):
     def __init__(self, uri, credentials = None):
         self.uri = uri
         self.credentials = credentials
+
+    def _auth(self):
+        return {'user': self.credentials['username'],
+                'pwd':  self.credentials['password']}
+
+    def get_still(self):
+        log.info(requests.get(self.uri + '/snapshot.cgi',
+            params = self._auth()))
 
 register(FI8910EDriver, 'FI8910E')
